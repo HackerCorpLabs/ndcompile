@@ -1,0 +1,10 @@
+MODULE hello
+    INTEGER ARRAY : stack(0:100)
+    BYTES : msg := 'HELLO FROM PLANC!'
+
+    PROGRAM : main
+        INISTACK stack
+        OUTPUT (1,'AL17',msg)
+        OUTPUT (1,'AL1','$')
+    ENDROUTINE
+ENDMODULE
