@@ -5,6 +5,7 @@ Build and test tool for ND-100 programs using the nd100x emulator and ndtool for
 ## Supported Languages
 
 - [PLANC](docs/PLANC.md)
+- [FORTRAN](docs/FORTRAN.md)
 
 ## Usage
 
