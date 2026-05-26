@@ -1,0 +1,61 @@
+C ---------------------------------------------------------------------------
+C file=(XMSG)SERVER:SYMB
+C Compile and load by running @MODE SERVER:MODE
+C This program open a named XMSG port that clients can connect to 
+C (see CLIENT:PROG)
+C It will write a message when the port is successfully opened and named
+C Type 1 to continue
+C A message will be written each time a client connects and when a message
+C is received from a client
+C ---------------------------------------------------------------------------
+
+      PROGRAM SERVX
+      INTEGER*4 SRV_MAGNO, CLI_MAGNO
+      INTEGER*2 IPORT, MESAD
+      INTEGER*2 MESSBUF(2048)
+      LOGICAL MORE
+      INTEGER*2 RECV_MESS, SEND_MESS
+      INTEGER*2 OPEN_SERVER
+      
+      ISTAT = OPEN_SERVER('ServerX', IPORT, SRV_MAGNO, MESAD)
+      IF ( ISTAT .NE. 0 ) THEN
+         OUTPUT(1)'OPEN_SERVER failed, status =', ISTAT
+         IF ( ISTAT .EQ. 3 ) THEN
+           OUTPUT(1)'Another port already has the name ServerX'
+         ENDIF
+         STOP 333
+      ENDIF
+      
+      OUTPUT(1)'A server port named ServerX should now be open'
+      OUTPUT(1)'Port no. ',IPORT, ', MAGNO is ', SRV_MAGNO
+      OUTPUT(1)'Type 1 to continue'
+      INPUT(1)I
+      OUTPUT(1)'** Read incoming messages'
+      
+      MORE = .TRUE.
+      DO WHILE (MORE .EQ. .TRUE.)
+       ISTAT = RECV_MESS(IPORT, MESAD, MESSBUF, NBYTES,0, 
+     c  SRV_MAGNO, CLI_MAGNO)
+       IF ( ISTAT .EQ. -1000 ) THEN
+          WRITE(1,5)
+5         FORMAT(1H ,'** A client connected to my server port')
+          OUTPUT(1)'Client magic number is ', CLI_MAGNO 
+       ELSE IF ( ISTAT .LT. 0 ) THEN
+         OUTPUT(1)'** recv_mess failed, status =',ISTAT
+       ELSE
+          WRITE(1,10)NBYTES
+10        FORMAT(1H ,'Received ',I5,' bytes')
+C Send an answer to the sending client
+          OUTPUT(1)'Send port', IPORT, ', client magno', CLI_MAGNO
+          ISTAT = SEND_MESS(IPORT, CLI_MAGNO, MESS, NBYTES)
+          IF (ISTAT .NE. 0) THEN
+              CALL  WSTAT('* Send message failed', ISTAT)
+              STOP 999
+          ENDIF   
+C          IF ( NBYTES .GT. 99 ) THEN
+C            MORE = .FALSE.
+C          ENDIF
+       ENDIF
+       ENDDO
+      
+      END

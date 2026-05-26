@@ -1,0 +1,396 @@
+%-----------------------------------------------------------------------%
+% XMSG FORTRAN interface functions                                      %
+% 1-bank and 2-bank compatible							                %
+% C-V. Sundling 2020                                                    %
+% On LINUX: Add CR to each line if using LINUX editor to edit his file: %
+% perl -pe 's/\r?\n/\r\n/' XLIB.SYMB > XMSG-LIBRARY.SYMB                %
+%-----------------------------------------------------------------------%
+%					
+*)9BEG
+*)9ENT XFOPN XFGET XFCLS XFDUM XFREL XFSCM XFWRI XFREA XDUM
+*)9ENT XFSND XFRCV XFDCT XSNAM XSLET XFMST XSGNM XFP2M
+*)9LIB XFOPN XFGET XFCLS XFDUM XFREL XFSCM XFWRI XFREA XDUM
+*)9LIB XFSND XFRCV XFDCT XSNAM XSLET XFMST XSGNM XFP2M
+
+DISP 0;
+   INTEGER POINTER P1,P2,P3,P4,P5;
+PSID;
+DISP 0; DOUBLE POINTER P1D=P1;
+		DOUBLE POINTER P2D=P2;
+		DOUBLE POINTER P3D=P3;
+PSID
+
+DISP 0;
+	INTEGER S0, S1, S2, S3, S4;
+PSID
+DISP 0;
+	DOUBLE S3D=S3;
+PSID
+
+
+SUBR XDUM
+XDUM:	A:=777; EXIT;
+RBUS
+
+%-----------------------------------------------------------
+% Open PORT, all parameters INTEGER*2
+% ISTAT = XFOPN(PORT,PERM)
+%-----------------------------------------------------------
+SUBR XFOPN
+
+INTEGER BSAVE,TSAVE;
+
+INTEGER STAT;
+XFOPN: A:=:B=:BSAVE; T=:TSAVE ;
+       T:=12; IF P2 ><0 THEN T BONE 15; FI;  % Permanent or not
+       *MON 200;        
+       T=:STAT; A=:P1;  % Return port number
+       T:=TSAVE; BSAVE=:B ;A:=STAT;
+       EXIT
+RBUS
+
+%-----------------------------------------------------------
+% Close PORT, all parameters INTEGER*2
+% ISTAT = XFCLS(PORT)
+%-----------------------------------------------------------
+SUBR XFCLS
+
+INTEGER BSAVE,TSAVE;
+
+INTEGER STAT;
+XFCLS: A:=:B=:BSAVE; T=:TSAVE;
+       P1; T:=13;
+       *MON 200;        
+       T=:STAT;
+       T:=TSAVE; BSAVE=:B ;A:=STAT;
+       EXIT
+RBUS
+
+%-----------------------------------------------------------
+% Disconnect from the message system
+% ISTAT = XFDCT()
+%-----------------------------------------------------------
+SUBR XFDCT
+
+INTEGER TSAVE;
+
+XFDCT: T=:TSAVE;
+       T:=1;
+       *MON 200;        
+       A:=T; T:=TSAVE;
+       EXIT
+RBUS
+
+%-----------------------------------------------------------
+% Get message space, all  parameters INTEGER*2
+% ISTAT = XFGET(MESAD,NBYTES,XFWTF,XFWAK)
+%-----------------------------------------------------------
+SUBR XFGET
+
+INTEGER BSAVE,TSAVE;
+
+INTEGER STAT;
+XFGET: A:=:B=:BSAVE ; T=:TSAVE ;
+       T:=2;
+	   IF P2 ><0 THEN T BONE 16; FI;  % Wait flag
+	   IF P3 ><0 THEN T BONE 17; FI;  %	Wake-up flag
+	   P2; *MON 200;        
+       T=:STAT; A=:P1;  % Return message address (MESAD)
+       T:=TSAVE; BSAVE=:B; A:=STAT;
+       EXIT
+RBUS
+
+%-----------------------------------------------------------
+% Set current message space all, parameters INTEGER*2
+% ISTAT = XFSCM(PORTNO,MESAD)
+%-----------------------------------------------------------
+SUBR XFSCM
+
+INTEGER BSAVE,TSAVE,DSAVE;
+
+INTEGER STAT;
+XFSCM: A:=:B=:BSAVE; T=:TSAVE; A:=D=:DSAVE;
+       P1=:D; P2; T:=10;
+       *MON 200;        
+       T=:STAT;
+       T:=TSAVE; BSAVE=:B; DSAVE=:D; A:=STAT;
+       EXIT
+RBUS
+
+%-----------------------------------------------------------
+% Release message space, all parameters INTEGER*2
+% ISTAT = XFREL(MESAD)
+%-----------------------------------------------------------
+SUBR XFREL
+
+INTEGER BSAVE,TSAVE;
+
+INTEGER STAT;
+XFREL: A:=:B=:BSAVE; T=:TSAVE;
+       P1; T:=3;
+       *MON 200;        
+       T=:STAT;
+       T:=TSAVE; BSAVE=:B ;A:=STAT;
+       EXIT
+RBUS
+
+
+%-----------------------------------------------------------
+% Dummy function
+% ISTAT = XFDUM()
+%-----------------------------------------------------------
+SUBR XFDUM
+
+INTEGER BSAVE,TSAVE;
+
+INTEGER STAT;
+XFDUM: A:=:B=:BSAVE; T=:TSAVE;
+       T:=0;
+       *MON 200;        
+       T=:STAT;
+       T:=TSAVE; BSAVE=:B; A:=STAT;
+       EXIT
+RBUS
+
+%-----------------------------------------------------------
+% Write to message buffer, message all parameters INTEGER*2
+% ISTAT = XFWRI(USBUF,NBYTES,DISP)
+%-----------------------------------------------------------
+SUBR XFWRI
+
+INTEGER BSAVE,TSAVE,XSAVE,DSAVE;
+
+INTEGER STAT;
+XFWRI: A:=:B=:BSAVE; T=:TSAVE; A:=D=:DSAVE; X=:XSAVE;
+       T:=7; P2=:D; X:=P3; S0;
+       *MON 200;        
+       T=:STAT; A:=D=:P2;	% Return no of bytes written
+       T:=TSAVE; DSAVE=:D; X:=XSAVE; BSAVE=:B; A:=STAT;
+       EXIT
+RBUS
+
+%-----------------------------------------------------------
+% Read from current message buffer, all parameters INTEGER*2
+% ISTAT = XFREA(UADD,NBYTES,DISP)
+%-----------------------------------------------------------
+SUBR XFREA
+
+INTEGER BSAVE,TSAVE,DSAVE,XSAVE;
+INTEGER STAT
+XFREA: A:=:B=:BSAVE; T=:TSAVE; A:=D=:DSAVE; X=:XSAVE;
+       T:=6; P2=:D; X:=P3; S0;
+       *MON 200;        
+       T=:STAT; A:=D=:P2;	% Return no of bytes   
+       T:=TSAVE; DSAVE=:D; X:=XSAVE; BSAVE=:B; A:=STAT;
+       EXIT
+RBUS
+
+%-----------------------------------------------------------
+% Send message, MAGNO is INTEGER*4, other par INTEGERB22
+% ISTAT = XFSND(MAGNO, PORTNO, OPTION)
+% Data is fetched from currrent buffer
+%-----------------------------------------------------------
+SUBR XFSND
+
+INTEGER BSAVE,TSAVE,XSAVE,DSAVE;
+DISP 0;
+	DOUBLE POINTER MAGNO;
+PSID
+
+INTEGER STAT;
+XFSND: A:=:B=:BSAVE; T=:TSAVE; A:=D=:DSAVE; X=:XSAVE;
+       T:=14; P3; T\/A; MAGNO; X:=P2;
+       *MON 200;        
+       T=:STAT;	
+       T:=TSAVE; DSAVE=:D; X:=XSAVE; BSAVE=:B; A:=STAT;
+       EXIT
+RBUS
+
+%-----------------------------------------------------------
+% Read from message buffer, all parameters INTEGER*2
+% ISTAT = XFRCV(PORT,MESAD,NBYTES,OPTIONS)
+% ISTAT becomes message type
+%-----------------------------------------------------------
+SUBR XFRCV
+
+INTEGER BSAVE,TSAVE,XSAVE,DSAVE;
+
+INTEGER STAT;
+XFRCV: A:=:B=:BSAVE; T=:TSAVE; A:=D=:DSAVE; X=:XSAVE;
+       T:=15; P1;
+       *MON 200;        
+       T=:STAT; A:=D=:P2; X=:P3;	% Return no of bytes read and MESAD
+       T:=TSAVE; DSAVE=:D; X:=XSAVE; BSAVE=:B; A:=STAT;
+       EXIT
+RBUS
+
+% ****************** Service function *********************
+% Generate service messages
+% user must write to message buffer XFWRI
+% and them send by XFSND
+% *********************************************************
+
+%-----------------------------------------------------------
+% Generate a message to name a port when sent to XROUT
+% User must send
+% ISTAT = XSNAM(PORT,NAME,SERIAL,USBUFF)
+% PORT:		INTEGER*2
+% NAME: 	Character string
+% USBUFF:	INTEGER*2 array
+% Character string par->	word->char string
+%							word+1  [bit 15 = 0 string starts in left,
+%							 else in right  ... bot 0_10 length of string
+
+%-----------------------------------------------------------
+SUBR XSNAM
+INTEGER BSAVE,TSAVE,XSAVE,DSAVE;
+
+INTEGER STAT;
+INTEGER TYPE:=177400;
+INTEGER USBUFF, SADDR;
+INTEGER FROM, TOBU;
+INTEGER PORT;
+
+% example:
+% SERFU, 102;       % Serial number 0, service function name port
+% LEN, 7;           % Length 7 bytes (rest of message)
+% TYPE,177400;      % String parameter 5 chars length
+% STRING,'ABCDE';
+
+
+XSNAM:	A:=:B=:BSAVE; T=:TSAVE; A:=D=:DSAVE; X=:XSAVE;
+		P1=:PORT;
+		P3 SHZ 10; A\/102; X:=S3; A=:X.S0;	% Serial number and service function
+		X=:USBUFF;					% Points to user buffer		
+		
+		X:=S1; X.S0=:SADDR;			% Move name and then set length
+		X.S1;
+		IF A BIT 17 THEN X:=1;		% Start in right byte
+					ELSE X:=0;		% Start left byte
+		FI
+ 		A BZERO 17; A=:D;			% D is number of bytes to move
+		X=:FROM;		
+		X:=USBUFF;		
+		A+2=:X.S1;					% length of rest of message	
+		TYPE\/D=:X.S2				% Parameter type and length (string)
+			
+		6=:TOBU;
+		DO WHILE D>=0;
+			T:=SADDR;  X:=FROM; *LBYT;
+			T:=USBUFF; X:=TOBU; *SBYT;
+			D-1; MIN FROM; MIN TOBU;
+		OD
+		T:=TSAVE; DSAVE=:D; X:=XSAVE; BSAVE=:B; A:=0;
+	
+		EXIT;
+RBUS
+
+SUBR XSLET
+INTEGER BSAVE,TSAVE,XSAVE,DSAVE;
+
+INTEGER TYPE:=177400;
+INTEGER USBUFF, SADDR;
+
+INTEGER FROM, TOBU;
+
+% ISTAT = XSLET('PORT1','?', 234, MESBUF(1))
+%				  S0     S1   S2   S3
+%				  P1     P2   P3   P4
+% example:
+% SERFU, 101;       % Serial number 0, service send letter
+% LEN, 7;           % Length 7 bytes (rest of message)
+% TYPE,177400;      % String parameter 5 chars length
+% STRING,'ABCDE';
+XSLET:	A:=:B=:BSAVE; T=:TSAVE; A:=D=:DSAVE; X=:XSAVE;
+		P3 SHZ 10; A\/101; X:=S3; A=:X.S0;	% Serial number and service function XSLET
+		X=:USBUFF;					% Points to user buffer		
+		
+		X:=S0; X.S0=:SADDR;			% Move port name and then set length
+		X.S1;
+		IF A BIT 17 THEN X:=1;		% Start in right byte
+					ELSE X:=0;		% Start left byte
+		FI
+ 		A BZERO 17; A=:D;			% D is number of bytes to move
+		X=:FROM;		
+		X:=USBUFF;		
+		A+2=:X.S1;					% length of rest of message	
+		TYPE\/D=:X.S2				% Parameter type and length (string)
+			
+		6=:TOBU;
+		DO WHILE D>=0;
+			T:=SADDR;  X:=FROM; *LBYT;
+			T:=USBUFF; X:=TOBU; *SBYT;
+			D-1; MIN FROM; MIN TOBU;
+		OD
+		T:=TSAVE; DSAVE=:D; X:=XSAVE; BSAVE=:B; A:=0;
+	
+		EXIT;
+RBUS
+
+% Get message status
+% T:=XFMST;A:=MESAD;MON200
+% AD=:MAGNO; X=:NBYTES
+
+SUBR XFMST
+INTEGER BSAVE,TSAVE,XSAVE,DSAVE;
+INTEGER STAT;
+% ISTAT = XFMST(MESAD, MAGNO, NBYTES)
+%				S0     S1      S2
+%				P1     P2      P3
+
+XFMST:	A:=:B=:BSAVE; T=:TSAVE; A:=D=:DSAVE; X=:XSAVE;
+	T:= 11; P1; *MON 200;
+	T=:STAT;
+	AD=:P2D; X=:P3;
+	T:=TSAVE; DSAVE=:D; X:=XSAVE; BSAVE=:B; A:=STAT;
+	EXIT;
+RBUS
+
+%-----------------------------------------------------------
+% Build message to get name from magic number
+% ISTAT = XSGNM(MAGNO,SERIAL,USBUFF)
+% MAGNO:	INTEGER*4
+% USBUFF:	INTEGER*2 array
+%-----------------------------------------------------------
+SUBR XSGNM
+INTEGER BSAVE,XSAVE,DSAVE;
+
+INTEGER STAT;
+INTEGER TYPE:=177400;
+
+% example:
+% SERFU, 102;       % Serial number 0, service function name port
+% LEN, 4;           % Length 7 bytes (rest of message)
+% MAGNO				% magic number 4 bytes
+
+
+XSGNM:	A:=:B=:BSAVE; X=:XSAVE; A:=D=:DSAVE;
+		P1 SHZ 10; A\/104; X:=S2; 	
+		A=:X.S0;			% Serial number and service function
+		6=:X.S1;			% length of rest of message
+		2=:X.S2;			% Type	
+		P1D=:X.S3D;			% magno
+		X:=XSAVE; BSAVE=:B; DSAVE=:D; A:=0;
+		EXIT;
+RBUS
+
+%-----------------------------------------------------------
+% Get magic number from port number
+% ISTAT = XFP2M(MAGNO,PORT)
+% MAGNO:	INTEGER*4
+% PORT :	INTEGER*2
+%-----------------------------------------------------------
+
+SUBR XFP2M
+INTEGER BSAVE,TSAVE,XSAVE,DSAVE;
+INTEGER STAT;
+XFP2M:	A:=:B=:BSAVE; X=:XSAVE;T=:TSAVE; A:=D; A=:DSAVE;
+		T:=27; P2; *MON 200;
+		AD=:P1D; T=:STAT;
+		DSAVE=:D; BSAVE=:B ;TSAVE=:T; A:=STAT;
+		EXIT;
+RBUS
+
+*)9END
+*)9EOF
+@EOF

@@ -21,14 +21,16 @@ SCRIPT_DIR = scripts
 
 # Local files
 LOAD_MODE  = $(SCRIPT_DIR)/LOAD-MODE.MODE
-DO_BUILD   = $(SCRIPT_DIR)/DO-BUILD.MODE
-SOURCE     = $(PROG_DIR)/$(PROG).PLNC
+DO_BUILD   = $(PROG_DIR)/DO-BUILD.MODE
 
-.PHONY: run build clean hello
+.PHONY: run build clean hello ftn-xmsg-1
 
 # Convenience targets
 hello:
-	$(MAKE) build PROG=HELLO
+	$(MAKE) build PROG=planc-hello-world
+
+ftn-xmsg-1:
+	$(MAKE) build PROG=ftn-xmsg-1
 
 run:
 	$(NDTOOL) -f --rm SYSTEM/LOAD-MODE:MODE $(SMD_IMAGE) || true
@@ -36,17 +38,19 @@ run:
 
 build:
 	@echo "=== Building $(PROG) ==="
-	@printf '@DELETE-FILE $(PROG):PROG\r\n@DELETE-FILE $(PROG):LIST\r\n@DELETE-FILE $(PROG):BRF\r\n@PLANC\r\nPROG-FILE "$(PROG)"\r\nCOMPILE $(PROG):PLNC,"$(PROG):LIST","$(PROG)"\r\nEXIT\r\n@$(PROG)\r\n' > $(DO_BUILD)
-	$(NDTOOL) -p --overwrite --put $(SOURCE) --dest BUILD $(PROG):PLNC $(SMD_IMAGE)
-	$(NDTOOL) -p --overwrite --put $(DO_BUILD) --dest BUILD DO-BUILD:MODE $(SMD_IMAGE)
+	@test -f $(DO_BUILD) || { echo "ERROR: $(DO_BUILD) not found"; exit 1; }
+	@for f in $(PROG_DIR)/*; do \
+		name=$$(basename "$$f"); \
+		ndfs_name=$$(echo "$$name" | sed 's/\./:/'); \
+		$(NDTOOL) -p --overwrite --put "$$f" --dest BUILD "$$ndfs_name" $(SMD_IMAGE); \
+	done
 	$(NDTOOL) -p --overwrite --put $(LOAD_MODE) --dest SYSTEM LOAD-MODE:MODE $(SMD_IMAGE)
 	$(EMU) --boot=$(BOOT_TYPE) --hdlc=$(HDLC_PORT)
-	@echo "=== Extracting logs and binary ==="
-	$(NDTOOL) -p -x -F BUILD-LOG:TXT -o $(PROG_DIR)/ $(SMD_IMAGE) 2>/dev/null || true
-	$(NDTOOL) -p -x -F RUN-LOG:TXT -o $(PROG_DIR)/ $(SMD_IMAGE) 2>/dev/null || true
-	$(NDTOOL) -x -F $(PROG):PROG -o $(PROG_DIR)/ $(SMD_IMAGE) 2>/dev/null || \
-	$(NDTOOL) -x -F $(PROG):BPUN -o $(PROG_DIR)/ $(SMD_IMAGE) 2>/dev/null || \
-	echo "No binary found for $(PROG)"
+	@echo "=== Extracting build artifacts ==="
+	$(NDTOOL) -x --overwrite -F 'BUILD/*:PROG' -o $(PROG_DIR)/ $(SMD_IMAGE) 2>/dev/null || true
+	$(NDTOOL) -x --overwrite -F 'BUILD/*:BRF' -o $(PROG_DIR)/ $(SMD_IMAGE) 2>/dev/null || true
+	$(NDTOOL) -x --overwrite -F 'BUILD/*:LIST' -o $(PROG_DIR)/ $(SMD_IMAGE) 2>/dev/null || true
+	$(NDTOOL) -p -x --overwrite -F 'BUILD/*:TXT' -o $(PROG_DIR)/ $(SMD_IMAGE) 2>/dev/null || true
 
 clean:
 	cp $(SMD_IMAGE).bak $(SMD_IMAGE)

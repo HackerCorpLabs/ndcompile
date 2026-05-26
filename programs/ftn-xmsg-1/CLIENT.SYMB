@@ -1,0 +1,41 @@
+C ---------------------------------------------------------------------------
+C file=(XMSG)CLIENT:SYMB
+C Compile and load by running @MODE SERVER:MODE
+C This program connects to the server program SERVER:PROG when started
+C If the server is not started, it will retry with an interva of 3 seconds
+C It then sends 2 messages and expects a message in return for each one
+C and then terminates when typing a character in the terminal windows
+C ---------------------------------------------------------------------------
+
+      PROGRAM CLIENT
+      
+      INTEGER*4 SRV_MAGNO, CLI_MAGNO
+      INTEGER*2 MYPORT, ISTAT, MESAD, NBYTES
+      INTEGER*2 MESS(1024)
+      INTEGER*2 OPEN_CLIENT, SEND_MESS, RECV_MESS
+      
+      ISTAT = OPEN_CLIENT('ServerX', MYPORT, SRV_MAGNO, 1)
+      IF (ISTAT .NE. 0) THEN
+        CALL  WSTAT('* Open client failed', ISTAT)
+        STOP 999
+      ENDIF
+      
+      OUTPUT(1)'The server MAGNO is ', SRV_MAGNO
+      OUTPUT(1)'My port no. is ', MYPORT
+      DO 10 I=1,2
+       NBYTES = I*2
+       ISTAT = SEND_MESS(MYPORT, SRV_MAGNO, MESS, NBYTES)
+       IF (ISTAT .NE. 0) THEN
+         CALL  WSTAT('* Send message failed', ISTAT)
+         STOP 999
+       ENDIF
+       WRITE(1,20)NBYTES
+20     FORMAT(1H ,'Sent', I5 , ' bytes')
+
+C Read an answer from the server
+       ISTAT = RECV_MESS(MYPORT, MESAD, MESS, NBYTES,0, 
+     c  SRV_MAGNO, CLI_MAGNO)
+10    CONTINUE      
+      PAUSE 10
+      END
+      

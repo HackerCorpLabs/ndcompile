@@ -1,0 +1,345 @@
+   
+C ----------------------------------------------------------------------
+C file=(XMSG)FORTRAN-XLIB:SYMB
+C Compile and load by running @MODE SERVER:MODE
+C Library functions for creating XMSG server/client programs
+C 
+Carl-Victor Sundling December 2020
+C
+C perl -pe 's/\r?\n/\r\n/' fortran-xlib.symb > FORTRAN-XLIB.SYMB 
+C to add CR/LF accepted by PED/FORT etc.
+C ----------------------------------------------------------------------
+
+C234567
+C     INTEGER*2 XFOPN, XFGET, XFCLS, XFDUM
+C     INTEGER*2 XFREL, XFSCM, XFWRI, XFREA, XDUM
+C     INTEGER*2 XFSND, XFRCV, XFDCT, XSNAM, XSLET, XFMST, XSGNM
+C     INTEGER*2 XFP2M
+
+
+C ----------------------------------------------------------------------
+C open a named server port
+C ----------------------------------------------------------------------
+
+      INTEGER*2 FUNCTION OPEN_SERVER(NAME, IPORT, SRV_MAGNO, MESAD)    
+      
+      CHARACTER NAME*(*)
+      INTEGER*2 IPORT, MESAD
+      INTEGER*4 SRV_MAGNO, MAGNO_0
+      INTEGER*2 ISTAT, SERIAL, MESTYP, MESBUF(64)
+
+C Open a nonperment XMXG-port
+      ISTAT=XFOPN(IPORT,0)
+      IF (ISTAT .NE. 0) THEN
+        CALL  WSTAT('* Open port failed', ISTAT)
+        OPEN_SERVER=ISTAT
+        RETURN
+      ENDIF
+   
+C Get magic no. for this port (mine)
+      ISTAT = XFP2M(SRV_MAGNO,IPORT)
+      IF (ISTAT .NE. 0) THEN
+        CALL  WSTAT('* Get magic no failed', ISTAT)
+        OPEN_SERVER=ISTAT
+        RETURN
+      ENDIF
+   
+C Generate XSNAM letter, always returns 0
+      SERIAL = 123
+      ISTAT = XSNAM(IPORT, NAME, SERIAL, MESBUF(1))
+   
+C Get message space 4096 bytes
+      ISTAT = XFGET(MESAD,2048,0,0)
+      IF (ISTAT .NE. 0) THEN
+        CALL  WSTAT('* Get mess. space 4K bytes failed', ISTAT)
+        OPEN_SERVER=ISTAT
+        RETURN
+      ENDIF
+   
+C Set current message buffer
+      ISTAT = XFSCM(IPORT, MESAD)
+      IF (ISTAT .NE. 0) THEN
+        CALL  WSTAT('* Set current mess. buffer failed', ISTAT)
+        OPEN_SERVER=ISTAT
+        RETURN
+      ENDIF
+   
+C Write service message to mess. buffer (name the port)   
+      ISTAT = XFWRI(MESBUF,20,0)
+      IF (ISTAT .NE. 0) THEN
+        CALL  WSTAT('* Write serv.mess. to buff. failed', ISTAT)
+        OPEN_SERVER=ISTAT
+        RETURN
+      ENDIF
+   
+      MAGNO_0 = 0
+C MAGNO is ignored when sending to XROUT
+C Send service mess. to XROUT
+      ISTAT = XFSND(MAGNO_0,IPORT,1024)
+      IF (ISTAT .NE. 0) THEN
+        CALL  WSTAT('* Send ser.mess. to XROUT failed', ISTAT)
+        RETURN
+      ENDIF
+   
+C Do XFRCV to read response from XROUT to name port
+      ISTAT = XFRCV(IPORT,MESAD,NBYTES,0)
+      IF (ISTAT .LT. 0) THEN
+        CALL  WSTAT('* Read XROUT response failed', ISTAT)
+        OPEN_SERVER=ISTAT
+        RETURN
+      ENDIF
+      
+C Read the returned message      
+      ISTAT = XFREA(MESBUF,NBYTES,0)
+      
+      
+C The message to name the port is returned
+C Byte 1 is then overwritten by an error status
+
+      JSTAT = IAND(MESBUF(1) , 255)
+      IF ( JSTAT .NE. 0 ) THEN
+C        OUTPUT(1)'PORT NAMING ERROR'
+         OPEN_SERVER = JSTAT
+      ELSE
+         OPEN_SERVER = 0
+      ENDIF
+      
+      IF ( ISTAT .LT. 0 ) THEN
+        MESTYP=-1
+      ELSE
+        MESTYP = ISTAT
+      ENDIF
+
+      END
+      
+C ----------------------------------------------------------------------
+C Get the magic number of a named server port
+C 
+C WAIT: ITEGER*2    1:  Retry request for magno when server port is
+C                       is not available
+C                   0:  Return -1001 if server port not available
+C ----------------------------------------------------------------------
+
+      INTEGER*2 FUNCTION OPEN_CLIENT(NAME, MYPORT, SRV_MAGNO, WAIT)
+      
+      CHARACTER NAME*(*)
+      INTEGER*2 MYPORT
+      INTEGER*4 SRV_MAGNO, MAGNO_0
+      INTEGER*2 WAIT
+      INTEGER*2 ECODE, MESAD, MESBUF(64), MESTYP, OPTIONS, SERIAL
+      
+C     Open nonpermanent port
+      ISTAT = XFOPN(MYPORT,0)
+      IF (ISTAT .NE. 0) THEN
+        CALL  WSTAT('* Open my port failed', ISTAT)
+        RETURN
+      ENDIF
+     
+C Build XROUT LETTER service message
+666   CONTINUE
+	     SERIAL = 234
+	     ISTAT = XSLET(NAME,'?', SERIAL, MESBUF(1))
+	     IF (ISTAT .NE. 0) THEN
+          CALL  WSTAT('* Generate XLET failed', ISTAT)
+          RETURN
+      ENDIF
+C Get message space 2048 bytes
+		    ISTAT = XFGET(MESAD,2048,0,0)	
+      IF (ISTAT .NE. 0) THEN
+          CALL  WSTAT('* Get message space failed', ISTAT)
+          RETURN
+      ENDIF
+C Set current message buffer
+		    ISTAT = XFSCM(MYPORT, MESAD)
+      IF (ISTAT .NE. 0) THEN
+          CALL  WSTAT('* Set current message buffer failed', ISTAT)
+          RETURN
+      ENDIF
+C Write service mess. (128 bytes) to messbuff 
+ 		   ISTAT = XFWRI(MESBUF(1), 128, 0)
+
+C	MAGNO is ignored when sending to XROUT
+C	Send serv mess to get the port number for this port name
+C Send service mess. to XROUT
+
+		    MAGNO_0 = 0
+		    OPTIONS = 1024
+		    ISTAT = XFSND(MAGNO_0, MYPORT, OPTIONS)
+      IF (ISTAT .NE. 0) THEN
+          CALL  WSTAT('* Send message failed', ISTAT)
+          RETURN
+      ENDIF
+      
+C Do XFRCV to read response from XROUT, status is in byte 2 of message
+		    ISTAT = XFRCV(MYPORT, MESAD, NBYTES,0)
+		    MESTYP = ISTAT
+		    IF (ISTAT .NE. 0) THEN
+          CALL  WSTAT('* Receive message failed', ISTAT)
+          RETURN
+      ENDIF
+      
+C Move XROUT answer from the current message to my buffer
+		    ISTAT = XFREA(MESBUF,NBYTES,0)
+		    IF (ISTAT .NE. 0) THEN
+          CALL  WSTAT('* Read message buffer failed', ISTAT)
+          RETURN
+      ENDIF
+		    IF ( IAND(MESBUF(1) , 255) .NE. 0 ) THEN
+C		        OUTPUT(1)'Could not get magno for port name ', NAME
+C		        output(1)'Status ', ISTAT
+		        IF (WAIT .EQ. 1) THEN
+		            CALL HOLD(3,2)
+		            GOTO 666
+		        ELSE
+		            ISTAT = -1001
+		            RETURN
+		        ENDIF
+       ENDIF
+		    	
+C Wait for a message from server
+			   ISTAT = XFRCV(MYPORT, MESAD, NBYTES,0)
+			   
+C Then get magic number for his server port
+		    ISTAT = XFMST(MESAD, SRV_MAGNO, NBYTES)
+      IF (ISTAT .NE. 0) THEN
+          CALL  WSTAT('* Get magic number failed', ISTAT)
+          RETURN
+      ENDIF
+
+C Read message from message buffer
+		    ISTAT = XFREA(MESBUF,NBYTES,0)
+		    IF (ISTAT .NE. 0) THEN
+          CALL  WSTAT('* Read message buffer failed', ISTAT)
+          RETURN
+      ENDIF
+		    ECODE = MESBUF(1) .AND. 255
+
+      OPEN_CLIENT = 0
+  
+      RETURN
+      END
+C ----------------------------------------------------------------------
+C Send a message to a port with a known magic number
+C ----------------------------------------------------------------------
+
+      INTEGER*2 FUNCTION SEND_MESS(IPORT, MAGNO, MESBUF, NBYTES)
+      
+      INTEGER*2 IPORT
+      INTEGER*2 MESBUF(*)
+      INTEGER*2 NBYTES
+      INTEGER*4 MAGNO
+      INTEGER*2 OPTIONS
+      
+      OPTIONS = 0
+c XFWRI write data to current message buffer
+      ISTAT = XFWRI(MESBUF,NBYTES,0)
+      IF (ISTAT .NE. 0) THEN
+          CALL  WSTAT('* Write to  message buffer failed', ISTAT)
+          SEND_MESS = ISTAT
+          RETURN
+      ENDIF
+      
+c Then send data to toher task
+      ISTAT = XFSND(MAGNO,IPORT,OPTIONS)
+      IF (ISTAT .NE. 0) THEN
+          CALL  WSTAT('* Send message (xfsnd) failed', ISTAT)
+          SEND_MESS = ISTAT
+          RETURN
+      ENDIF
+      SEND_MESS=0
+      RETURN
+      END
+C ----------------------------------------------------------------------
+C ISTAT = RECV_MESS(IPORT,MESAD,MESBUF,NBYTES,OPTIONS,SRV_MAGNO)
+C 
+C ISTAT:
+C              -1000 a client has asked for my magic number
+C              1 if normal message
+C              2 if routed message (sent by XROUT)
+C              else XMSG status error (negative numbers)
+C parameters:
+C              All integer*2 except SRV_MAGNO and CLI_MAGNO
+C              which are integer*4
+C ----------------------------------------------------------------------
+
+      INTEGER*2 FUNCTION RECV_MESS
+     C (IPORT,MESAD,MESBUF,NBYTES,OPTIONS,SRV_MAGNO, CLI_MAGNO)
+      
+      INTEGER*2 IPORT, MESAD, OPTIONS
+      INTEGER*2 MESBUF(*)
+      INTEGER*2 NBYTES
+      INTEGER*4 SRV_MAGNO, CLI_MAGNO
+      INTEGER*2 XFRCV, XFMST, XFREA, XFSND, XFWRI
+      
+      OPTIONS = 0
+      ISTAT = XFRCV(IPORT,MESAD,NBYTES,OPTIONS)
+      IF (ISTAT .LT. 0) THEN
+        CALL  WSTAT('* receive message failed', ISTAT)
+        RECV_MESS = ISTAT
+        RETURN
+      ENDIF
+C Get message type and sending client magic number
+		    MESTYP = XFMST(MESAD, CLI_MAGNO, NBYTES)
+C     OUTPUT(1)'>>> MAGNO =', CLI_MAGNO
+
+C Move data from the current message to my buffer
+		    ISTAT = XFREA(MESBUF,NBYTES,0)
+
+C Decode message and return MAGNO if a client asks for it
+
+      IF  (( MESBUF(1) .AND. 255) .EQ. 65 ) THEN
+          OUTPUT(1) '--- Somebody asked for my magic number'
+          OUTPUT(1) '--- give him my MAGNO = ', SRV_MAGNO
+          OUTPUT(1) '--- His MAGNO         = ', CLI_MAGNO
+C 777 is just a dummy number          
+          MESBUF(1) = 777
+          MESBUF(2) = ISHFT(SRV_MAGN0,-16)
+          MESBUF(3) = SRV_MAGNO .AND. 32767
+          ISTAT = XFWRI(MESBUF,16,0)
+C         OUTPUT(1) '--- Send the message to client'
+          ISTAT = XFSND(CLI_MAGNO, IPORT, 0)
+          RECV_MESS = -1000
+      ELSE       
+          RECV_MESS = 0
+      ENDIF
+      RETURN
+      END
+C ----------------------------------------------------------------------
+C ----------------------------------------------------------------------
+
+      INTEGER*2 FUNCTION CLOSE_SERVER(IPORT)
+      
+      INTEGER*2 PORT
+ 
+      CLOSE_SERVER=0
+      RETURN
+      END
+C ----------------------------------------------------------------------
+C ----------------------------------------------------------------------
+
+      INTEGER*2 FUNCTION CLOSE_CLIENT(PORT)
+      
+      INTEGER*2 PORT
+ 
+      CLOSE_CLIENT=0
+      RETURN
+      END
+C ----------------------------------------------------------------------
+c Write an error massage and numbe
+C ---------------------------------------------------------------------- 
+      SUBROUTINE WSTAT(TXT, ISTAT)
+      
+      CHARACTER TXT*(*)
+      INTEGER*2 ISTAT
+      
+      CHARACTER*2 CRLF
+      INTEGER*2 ICRLF
+      DATA ICRLF /6412B/
+      EQUIVALENCE (CRLF,ICRLF)
+
+      OUTPUT(1)CRLF,TXT, ' / Error, status = ', ISTAT
+      RETURN
+      END
+     
+      EOF
+  
